@@ -3667,7 +3667,13 @@ class Environment(object):
             t = inf
             c = self._main
         c._on_event_list = False
+
+        # If there is a significant time step, sleep to simulate real-time
+        prev_now = self.env._now
         self.env._now = t
+        step_size = t - prev_now
+        if self.env.real_time and step_size > 1e-3:
+            time.sleep(step_size)
 
         self._current_component = c
 
@@ -4479,7 +4485,7 @@ class Environment(object):
         '''
         return self._current_component
 
-    def run(self, duration=None, till=None, urgent=False):
+    def run(self, duration=None, till=None, urgent=False, real_time=False):
         '''
         start execution of the simulation
 
@@ -4502,6 +4508,11 @@ class Environment(object):
             in front of all components scheduled
             for the same time
 
+        real_time : bool
+            whether or not to run as fast as possible,
+            or to assume that 1 time unit equals one second
+            and try to simulate the system running in real-time
+
         Note
         ----
         only issue run() from the main level
@@ -4522,6 +4533,8 @@ class Environment(object):
 
         self._main.frame = _get_caller_frame()
         self._main._reschedule(scheduled_time, urgent, 'run')
+
+        self.real_time = real_time
 
         self.running = True
         while self.running:
